@@ -1,0 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Roboto+Slab:wght@400;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 1. Global default font: Memphis (Roboto Slab fallback) */
+* {
+    font-family: 'Memphis', 'Roboto Slab', serif !important;
+}
+
+/* 2. Title & Logo font: Bison (Bebas Neue fallback) */
+.font-bison,
+.font-bison * {
+    font-family: 'Bison', 'Bebas Neue', sans-serif !important;
+    letter-spacing: 0.08em;
+}
+
+twisty-player {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+}
+
+twisty-player canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.cube-visual-container svg {
+    max-width: 100%;
+    max-height: 100%;
+    display: block;
+    margin: 0 auto;
+    filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5));
+}
