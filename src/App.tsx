@@ -160,10 +160,10 @@ export default function App() {
   return (
     <div className="min-h-[100dvh] bg-[#0d0f12] text-slate-100 flex flex-col font-sans w-full overflow-x-hidden">
       {/* Top Header Bar */}
-      <header className="px-6 py-3.5 bg-[#0d0f12] sticky top-0 z-30 border-b border-slate-800/80 flex items-center justify-between w-full shadow-lg backdrop-blur-md bg-opacity-95">
-          <div className="flex items-center gap-6 min-w-0">
+        <header className="px-3 sm:px-6 py-3.5 bg-[#0d0f12] sticky top-0 z-30 border-b border-slate-800/80 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 justify-between w-full shadow-lg backdrop-blur-md bg-opacity-95">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-6 min-w-0 w-full sm:w-auto">
           {/* Logo + Title */}
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveNav('3x3')}>
+          <div className="flex items-center justify-center sm:justify-start gap-3 cursor-pointer" onClick={() => setActiveNav('3x3')}>
             <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700/50 flex items-center justify-center overflow-hidden p-1 shadow-inner">
               <img
                 src="/logo.png"
@@ -180,10 +180,10 @@ export default function App() {
           </div>
 
           {/* Primary Top Bar Navigation */}
-          <nav className="flex items-center gap-2 bg-slate-950/80 p-1 rounded-xl border border-slate-800/80">
+          <nav className="grid grid-cols-3 items-stretch gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800/80 w-full sm:w-auto">
             <button
               onClick={() => setActiveNav('3x3')}
-              className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${activeNav === '3x3'
+              className={`min-w-0 px-2 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1 sm:gap-2 ${activeNav === '3x3'
                   ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
                   : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
                 }`}
@@ -193,7 +193,7 @@ export default function App() {
 
             <button
               onClick={() => setActiveNav('timer')}
-              className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${activeNav === 'timer'
+              className={`min-w-0 px-2 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1 sm:gap-2 ${activeNav === 'timer'
                   ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
                   : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
                 }`}
@@ -203,7 +203,7 @@ export default function App() {
 
             <button
               onClick={() => setActiveNav('train')}
-              className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${activeNav === 'train'
+              className={`min-w-0 px-2 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1 sm:gap-2 ${activeNav === 'train'
                   ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
                   : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
                 }`}
