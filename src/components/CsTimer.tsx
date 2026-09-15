@@ -5,6 +5,7 @@ export const CsTimer: React.FC = () => {
     const [scramble, setScramble] = useState<string>(() => generate3x3Scramble());
     const [timeMs, setTimeMs] = useState<number>(0);
     const [timerState, setTimerState] = useState<'idle' | 'holding' | 'ready' | 'running'>('idle');
+    const timerStateRef = useRef<'idle' | 'holding' | 'ready' | 'running'>('idle');
     const [solves, setSolves] = useState<Solve[]>(() => {
         try {
             const saved = localStorage.getItem('cs_timer_solves');
@@ -18,6 +19,11 @@ export const CsTimer: React.FC = () => {
     const holdTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const startTimeRef = useRef<number>(0);
+
+    const setTimerPhase = useCallback((phase: 'idle' | 'holding' | 'ready' | 'running') => {
+        timerStateRef.current = phase;
+        setTimerState(phase);
+    }, []);
 
     // Save solves to localStorage
     useEffect(() => {
@@ -56,37 +62,39 @@ export const CsTimer: React.FC = () => {
         }
         const finalTime = Date.now() - startTimeRef.current;
         setTimeMs(finalTime);
-        setTimerState('idle');
+        setTimerPhase('idle');
         recordSolve(finalTime);
-    }, [recordSolve]);
+    }, [recordSolve, setTimerPhase]);
 
     const startTimer = useCallback(() => {
         startTimeRef.current = Date.now();
-        setTimerState('running');
+        setTimerPhase('running');
         timerIntervalRef.current = setInterval(() => {
             setTimeMs(Date.now() - startTimeRef.current);
         }, 10);
-    }, []);
+    }, [setTimerPhase]);
 
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
         if (e.code === 'Space') {
             e.preventDefault();
-            if (timerState === 'running') {
+            const currentState = timerStateRef.current;
+            if (currentState === 'running') {
                 stopTimer();
-            } else if (timerState === 'idle') {
-                setTimerState('holding');
+            } else if (currentState === 'idle') {
+                setTimerPhase('holding');
                 if (!holdTimeoutRef.current) {
                     holdTimeoutRef.current = setTimeout(() => {
-                        setTimerState('ready');
-                    }, 300);
+                        holdTimeoutRef.current = null;
+                        if (timerStateRef.current === 'holding') setTimerPhase('ready');
+                    }, 500);
                 }
             }
-        } else if (timerState === 'running') {
+        } else if (timerStateRef.current === 'running') {
             stopTimer();
         }
-    }, [stopTimer, timerState]);
+    }, [setTimerPhase, stopTimer]);
 
     const handleKeyUp = useCallback((e: KeyboardEvent) => {
         if (e.code === 'Space') {
@@ -95,24 +103,27 @@ export const CsTimer: React.FC = () => {
                 clearTimeout(holdTimeoutRef.current);
                 holdTimeoutRef.current = null;
             }
-            if (timerState === 'ready') {
+            const currentState = timerStateRef.current;
+            if (currentState === 'ready') {
                 startTimer();
-            } else if (timerState === 'holding') {
-                setTimerState('idle');
+            } else if (currentState === 'holding') {
+                setTimerPhase('idle');
             }
         }
-    }, [startTimer, timerState]);
+    }, [setTimerPhase, startTimer]);
 
     // Touch handlers for mobile / mouse hold
     const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
         event.currentTarget.setPointerCapture(event.pointerId);
-        if (timerState === 'running') {
+        const currentState = timerStateRef.current;
+        if (currentState === 'running') {
             stopTimer();
-        } else if (timerState === 'idle') {
-            setTimerState('holding');
+        } else if (currentState === 'idle') {
+            setTimerPhase('holding');
             holdTimeoutRef.current = setTimeout(() => {
-                setTimerState('ready');
-            }, 300);
+                holdTimeoutRef.current = null;
+                if (timerStateRef.current === 'holding') setTimerPhase('ready');
+            }, 500);
         }
     };
 
@@ -122,10 +133,11 @@ export const CsTimer: React.FC = () => {
             clearTimeout(holdTimeoutRef.current);
             holdTimeoutRef.current = null;
         }
-        if (timerState === 'ready') {
+        const currentState = timerStateRef.current;
+        if (currentState === 'ready') {
             startTimer();
-        } else if (timerState === 'holding') {
-            setTimerState('idle');
+        } else if (currentState === 'holding') {
+            setTimerPhase('idle');
         }
     };
 
@@ -134,7 +146,7 @@ export const CsTimer: React.FC = () => {
             clearTimeout(holdTimeoutRef.current);
             holdTimeoutRef.current = null;
         }
-        if (timerState === 'holding' || timerState === 'ready') setTimerState('idle');
+        if (timerStateRef.current === 'holding' || timerStateRef.current === 'ready') setTimerPhase('idle');
     };
 
     useEffect(() => {
@@ -224,9 +236,15 @@ export const CsTimer: React.FC = () => {
                 onPointerDown={handlePointerDown}
                 onPointerUp={handlePointerUp}
                 onPointerCancel={cancelPointer}
-                className="w-full py-16 sm:py-24 flex flex-col items-center justify-center bg-[#0a0c0f] border border-slate-900 rounded-3xl cursor-pointer hover:border-slate-800 transition-all relative overflow-hidden shadow-2xl group touch-none"
+                className={`w-full py-16 sm:py-24 flex flex-col items-center justify-center rounded-3xl cursor-pointer transition-all relative overflow-hidden shadow-2xl group touch-none border ${
+                    timerState === 'ready'
+                        ? 'bg-emerald-950/40 border-emerald-400/80 shadow-emerald-950/50'
+                        : timerState === 'running'
+                        ? 'bg-cyan-950/30 border-cyan-500/60'
+                        : 'bg-[#0a0c0f] border-slate-900 hover:border-slate-800'
+                }`}
             >
-                <div className="absolute top-4 text-xs font-mono text-slate-500 tracking-widest uppercase">
+                <div className={`absolute top-4 text-xs font-mono tracking-widest uppercase ${timerState === 'ready' ? 'text-emerald-300' : 'text-slate-500'}`}>
                     {timerState === 'idle' && 'Hold [Spacebar] or tap & hold to arm'}
                     {timerState === 'holding' && 'Wait for green...'}
                     {timerState === 'ready' && 'Release to start!'}
