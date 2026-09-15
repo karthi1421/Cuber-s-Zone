@@ -30,7 +30,7 @@ export const Cube3D: React.FC<Cube3DProps> = ({
             const visualSize = Math.max(100, numericHeight - 16);
 
             // Build sr-visualizer options based on case type
-            const options: any = {
+            const options: Record<string, unknown> = {
                 case: cleanAlg,
                 width: visualSize,
                 height: visualSize,

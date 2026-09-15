@@ -1,80 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-
-export interface Solve {
-    id: string;
-    timeMs: number;
-    scramble: string;
-    timestamp: number;
-    penalty?: '+2' | 'DNF';
-}
-
-const WCA_FACES = ['U', 'D', 'L', 'R', 'F', 'B'] as const;
-const WCA_MODIFIERS = ['', "'", '2'] as const;
-
-// Generates an authentic WCA 3x3 scramble with axis filtering
-export function generate3x3Scramble(length: number = 21): string {
-    const scramble: string[] = [];
-    let lastAxis = -1;
-    let secondLastAxis = -1;
-
-    // Face to Axis: U/D = 0, L/R = 1, F/B = 2
-    const faceAxisMap: Record<string, number> = {
-        U: 0, D: 0,
-        L: 1, R: 1,
-        F: 2, B: 2,
-    };
-
-    while (scramble.length < length) {
-        const face = WCA_FACES[Math.floor(Math.random() * WCA_FACES.length)];
-        const axis = faceAxisMap[face];
-
-        if (axis === lastAxis) continue;
-        if (axis === secondLastAxis && axis === lastAxis) continue;
-
-        const modifier = WCA_MODIFIERS[Math.floor(Math.random() * WCA_MODIFIERS.length)];
-        scramble.push(`${face}${modifier}`);
-
-        secondLastAxis = lastAxis;
-        lastAxis = axis;
-    }
-
-    return scramble.join(' ');
-}
-
-export function formatTime(ms: number, penalty?: '+2' | 'DNF'): string {
-    if (penalty === 'DNF') return 'DNF';
-    const effectiveMs = penalty === '+2' ? ms + 2000 : ms;
-    const totalSeconds = effectiveMs / 1000;
-
-    if (totalSeconds >= 60) {
-        const mins = Math.floor(totalSeconds / 60);
-        const secs = (totalSeconds % 60).toFixed(2);
-        const paddedSecs = parseFloat(secs) < 10 ? `0${secs}` : secs;
-        return `${mins}:${paddedSecs}${penalty === '+2' ? '+' : ''}`;
-    }
-
-    return `${totalSeconds.toFixed(2)}${penalty === '+2' ? '+' : ''}`;
-}
-
-export function calculateAverage(solves: Solve[], count: number): number | null {
-    if (solves.length < count) return null;
-    const recent = solves.slice(-count);
-
-    // If more than 1 DNF, average is DNF (represented as -1)
-    const dnfs = recent.filter(s => s.penalty === 'DNF').length;
-    if (dnfs > 1) return -1;
-
-    const times = recent.map(s => {
-        if (s.penalty === 'DNF') return Infinity;
-        return s.penalty === '+2' ? s.timeMs + 2000 : s.timeMs;
-    });
-
-    times.sort((a, b) => a - b);
-    // Remove best and worst
-    const trimmed = times.slice(1, -1);
-    const sum = trimmed.reduce((acc, t) => acc + t, 0);
-    return Math.round(sum / trimmed.length);
-}
+import { calculateAverage, formatTime, generate3x3Scramble, Solve } from './timerUtils';
 
 export const CsTimer: React.FC = () => {
     const [scramble, setScramble] = useState<string>(() => generate3x3Scramble());
@@ -90,8 +15,8 @@ export const CsTimer: React.FC = () => {
     });
 
     const [copiedScramble, setCopiedScramble] = useState(false);
-    const holdTimeoutRef = useRef<any>(null);
-    const timerIntervalRef = useRef<any>(null);
+    const holdTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const startTimeRef = useRef<number>(0);
 
     // Save solves to localStorage
@@ -113,7 +38,7 @@ export const CsTimer: React.FC = () => {
         setTimeout(() => setCopiedScramble(false), 1500);
     };
 
-    const recordSolve = (finalMs: number) => {
+    const recordSolve = useCallback((finalMs: number) => {
         const newSolve: Solve = {
             id: Date.now().toString(),
             timeMs: finalMs,
@@ -122,9 +47,9 @@ export const CsTimer: React.FC = () => {
         };
         setSolves(prev => [...prev, newSolve]);
         newScramble();
-    };
+    }, [newScramble, scramble]);
 
-    const stopTimer = () => {
+    const stopTimer = useCallback(() => {
         if (timerIntervalRef.current) {
             clearInterval(timerIntervalRef.current);
             timerIntervalRef.current = null;
@@ -133,15 +58,15 @@ export const CsTimer: React.FC = () => {
         setTimeMs(finalTime);
         setTimerState('idle');
         recordSolve(finalTime);
-    };
+    }, [recordSolve]);
 
-    const startTimer = () => {
+    const startTimer = useCallback(() => {
         startTimeRef.current = Date.now();
         setTimerState('running');
         timerIntervalRef.current = setInterval(() => {
             setTimeMs(Date.now() - startTimeRef.current);
         }, 10);
-    };
+    }, []);
 
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -161,7 +86,7 @@ export const CsTimer: React.FC = () => {
         } else if (timerState === 'running') {
             stopTimer();
         }
-    }, [timerState]);
+    }, [stopTimer, timerState]);
 
     const handleKeyUp = useCallback((e: KeyboardEvent) => {
         if (e.code === 'Space') {
@@ -176,10 +101,11 @@ export const CsTimer: React.FC = () => {
                 setTimerState('idle');
             }
         }
-    }, [timerState]);
+    }, [startTimer, timerState]);
 
     // Touch handlers for mobile / mouse hold
-    const handleTouchStart = () => {
+    const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+        event.currentTarget.setPointerCapture(event.pointerId);
         if (timerState === 'running') {
             stopTimer();
         } else if (timerState === 'idle') {
@@ -190,7 +116,8 @@ export const CsTimer: React.FC = () => {
         }
     };
 
-    const handleTouchEnd = () => {
+    const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+        event.currentTarget.releasePointerCapture(event.pointerId);
         if (holdTimeoutRef.current) {
             clearTimeout(holdTimeoutRef.current);
             holdTimeoutRef.current = null;
@@ -200,6 +127,14 @@ export const CsTimer: React.FC = () => {
         } else if (timerState === 'holding') {
             setTimerState('idle');
         }
+    };
+
+    const cancelPointer = () => {
+        if (holdTimeoutRef.current) {
+            clearTimeout(holdTimeoutRef.current);
+            holdTimeoutRef.current = null;
+        }
+        if (timerState === 'holding' || timerState === 'ready') setTimerState('idle');
     };
 
     useEffect(() => {
@@ -286,11 +221,10 @@ export const CsTimer: React.FC = () => {
 
             {/* Huge Timer Viewport */}
             <div
-                onMouseDown={handleTouchStart}
-                onMouseUp={handleTouchEnd}
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
-                className="w-full py-16 sm:py-24 flex flex-col items-center justify-center bg-[#0a0c0f] border border-slate-900 rounded-3xl cursor-pointer hover:border-slate-800 transition-all relative overflow-hidden shadow-2xl group"
+                onPointerDown={handlePointerDown}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={cancelPointer}
+                className="w-full py-16 sm:py-24 flex flex-col items-center justify-center bg-[#0a0c0f] border border-slate-900 rounded-3xl cursor-pointer hover:border-slate-800 transition-all relative overflow-hidden shadow-2xl group touch-none"
             >
                 <div className="absolute top-4 text-xs font-mono text-slate-500 tracking-widest uppercase">
                     {timerState === 'idle' && 'Hold [Spacebar] or tap & hold to arm'}

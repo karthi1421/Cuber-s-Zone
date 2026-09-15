@@ -3,12 +3,13 @@ import { F2L_DATA, OLL_DATA, PLL_DATA, AlgCase } from './data/cfopData';
 import { CMLL_DATA, LSE_DATA, ROUX_STEPS } from './data/rouxData';
 import { AlgCard } from './components/AlgCard';
 import { AlgModal } from './components/AlgModal';
-import { AlgFilterBar, SortOption, getMoveCount } from './components/AlgFilterBar';
+import { AlgFilterBar, SortOption } from './components/AlgFilterBar';
+import { getMoveCount } from './components/algUtils';
 import { CsTimer } from './components/CsTimer';
 import { TrainAlgorithms } from './components/TrainAlgorithms';
 import type { CaseType } from './components/Cube3D';
 
-export type MainNavOption = '3x3' | 'timer' | 'train';
+export type MainNavOption = '3x3' | 'cfop' | 'roux' | 'cfop-f2l' | 'cfop-oll' | 'cfop-pll' | 'roux-cmll' | 'roux-lse' | 'roux-steps' | 'timer' | 'train';
 export type MethodType = 'CFOP' | 'ROUX';
 export type CfopSubcategory = 'F2L' | 'OLL' | 'PLL';
 export type RouxSubcategory = 'CMLL' | 'LSE' | 'STEPS';
@@ -31,12 +32,16 @@ export default function App() {
   // Reset filter when category changes
   const handleSelectCfop = (cat: CfopSubcategory) => {
     setSelectedCfopCategory(cat);
+    setSelectedMethod('CFOP');
+    setActiveNav(`cfop-${cat.toLowerCase()}` as MainNavOption);
     setSelectedGroupFilter('ALL');
     setSearchQuery('');
   };
 
   const handleSelectRoux = (cat: RouxSubcategory) => {
     setSelectedRouxCategory(cat);
+    setSelectedMethod('ROUX');
+    setActiveNav(`roux-${cat.toLowerCase()}` as MainNavOption);
     setSelectedGroupFilter('ALL');
     setSearchQuery('');
   };
@@ -60,7 +65,7 @@ export default function App() {
   }, [selectedRouxCategory]);
 
   // Process sorting & filtering
-  const processCases = (rawList: AlgCase[]) => {
+  const processCases = React.useCallback((rawList: AlgCase[]) => {
     let result = rawList;
 
     // Filter by group/shape
@@ -104,10 +109,10 @@ export default function App() {
     });
 
     return result;
-  };
+  }, [selectedGroupFilter, searchQuery, sortBy]);
 
-  const currentCfopCases = React.useMemo(() => processCases(rawCfopCases), [rawCfopCases, selectedGroupFilter, searchQuery, sortBy]);
-  const currentRouxCases = React.useMemo(() => processCases(rawRouxCases), [rawRouxCases, selectedGroupFilter, searchQuery, sortBy]);
+  const currentCfopCases = React.useMemo(() => processCases(rawCfopCases), [rawCfopCases, processCases]);
+  const currentRouxCases = React.useMemo(() => processCases(rawRouxCases), [rawRouxCases, processCases]);
 
   // Grouped cases mapping for CFOP
   const groupedCfopCases = React.useMemo(() => {
@@ -153,10 +158,10 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0d0f12] text-slate-100 flex flex-col font-sans w-full">
+    <div className="min-h-[100dvh] bg-[#0d0f12] text-slate-100 flex flex-col font-sans w-full overflow-x-hidden">
       {/* Top Header Bar */}
       <header className="px-6 py-3.5 bg-[#0d0f12] sticky top-0 z-30 border-b border-slate-800/80 flex items-center justify-between w-full shadow-lg backdrop-blur-md bg-opacity-95">
-        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-6 min-w-0">
           {/* Logo + Title */}
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveNav('3x3')}>
             <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700/50 flex items-center justify-center overflow-hidden p-1 shadow-inner">
@@ -169,7 +174,7 @@ export default function App() {
                 }}
               />
             </div>
-            <h1 className="font-bison text-3xl font-extrabold tracking-wider text-cyan-400">
+            <h1 className="font-bison text-2xl sm:text-3xl font-extrabold tracking-wider text-cyan-400 truncate">
               CUBER'S ZONE
             </h1>
           </div>
@@ -218,12 +223,12 @@ export default function App() {
       </header>
 
       {/* Main View Area */}
-      <main className="flex-1 p-6 overflow-y-auto max-w-7xl mx-auto w-full">
+      <main className="flex-1 min-h-0 p-4 sm:p-6 overflow-y-auto max-w-7xl mx-auto w-full">
         {/* VIEW 1: 3x3 METHODS HUB */}
-        {activeNav === '3x3' && (
+        {['3x3', 'cfop', 'roux', 'cfop-f2l', 'cfop-oll', 'cfop-pll', 'roux-cmll', 'roux-lse', 'roux-steps'].includes(activeNav) && (
           <div className="w-full flex flex-col gap-6">
             {/* Section Header */}
-            <div>
+            <div className={activeNav === '3x3' ? '' : 'hidden'}>
               <h2 className="font-bison text-3xl text-slate-100 tracking-wider">
                 3x3 Solving Methods
               </h2>
@@ -233,11 +238,12 @@ export default function App() {
             </div>
 
             {/* SIDE BY SIDE: CFOP and ROUX (One beside the other) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 w-full">
+            <div className={`grid grid-cols-1 md:grid-cols-2 gap-5 w-full ${activeNav === '3x3' ? '' : 'hidden'}`}>
               {/* Method Card 1: CFOP */}
               <div
                 onClick={() => {
                   setSelectedMethod('CFOP');
+                  setActiveNav('cfop');
                   setSelectedCfopCategory(null); // Do not show cases yet until subcategory chosen
                 }}
                 className={`cursor-pointer rounded-2xl p-6 border transition-all relative overflow-hidden flex flex-col justify-between shadow-xl ${selectedMethod === 'CFOP'
@@ -273,6 +279,7 @@ export default function App() {
               <div
                 onClick={() => {
                   setSelectedMethod('ROUX');
+                  setActiveNav('roux');
                   setSelectedRouxCategory(null); // Do not show cases yet until subcategory chosen
                 }}
                 className={`cursor-pointer rounded-2xl p-6 border transition-all relative overflow-hidden flex flex-col justify-between shadow-xl ${selectedMethod === 'ROUX'
@@ -306,7 +313,7 @@ export default function App() {
             </div>
 
             {/* IF NO METHOD SELECTED YET: Show gentle prompt, NO cases */}
-            {!selectedMethod && (
+            {!selectedMethod && activeNav === '3x3' && (
               <div className="w-full bg-[#121418]/60 border border-slate-800/60 rounded-2xl p-8 text-center flex flex-col items-center justify-center gap-2 mt-2">
                 <span className="text-3xl">👆</span>
                 <h3 className="font-bison text-2xl text-slate-200 tracking-wide">
@@ -319,7 +326,7 @@ export default function App() {
             )}
 
             {/* 1. CFOP SELECTED */}
-            {selectedMethod === 'CFOP' && (
+            {selectedMethod === 'CFOP' && activeNav.startsWith('cfop') && (
               <div className="w-full flex flex-col gap-6 mt-2 animate-fadeIn">
                 {/* 3 Buttons: F2L, OLL, PLL */}
                 <div className="flex flex-wrap items-center justify-between gap-4 bg-[#121418] p-4 rounded-2xl border border-slate-800/80 shadow-md">
@@ -453,7 +460,7 @@ export default function App() {
             )}
 
             {/* 2. ROUX SELECTED */}
-            {selectedMethod === 'ROUX' && (
+            {selectedMethod === 'ROUX' && activeNav.startsWith('roux') && (
               <div className="w-full flex flex-col gap-6 mt-2 animate-fadeIn">
                 <div className="flex flex-wrap items-center justify-between gap-4 bg-[#121418] p-4 rounded-2xl border border-slate-800/80 shadow-md">
                   <div className="flex items-center gap-2 sm:gap-3">

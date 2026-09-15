@@ -8,8 +8,19 @@ export const TrainAlgorithms: React.FC = () => {
     const [showSolution, setShowSolution] = useState(false);
     const [timer, setTimer] = useState(0);
     const [isTimerRunning, setIsTimerRunning] = useState(false);
-    const [streak, setStreak] = useState(0);
-    const [history, setHistory] = useState<{ name: string; correct: boolean; time: number }[]>([]);
+    const [streak, setStreak] = useState(() => Number(localStorage.getItem('cuber_train_streak') || 0));
+    const [history, setHistory] = useState<{ name: string; correct: boolean; time: number }[]>(() => {
+        try {
+            return JSON.parse(localStorage.getItem('cuber_train_history') || '[]');
+        } catch {
+            return [];
+        }
+    });
+
+    useEffect(() => {
+        localStorage.setItem('cuber_train_streak', String(streak));
+        localStorage.setItem('cuber_train_history', JSON.stringify(history));
+    }, [streak, history]);
 
     const pool: AlgCase[] = React.useMemo(() => {
         if (trainCategory === 'F2L') return F2L_DATA;
@@ -30,7 +41,7 @@ export const TrainAlgorithms: React.FC = () => {
 
     // Timer tick
     useEffect(() => {
-        let interval: any;
+        let interval: ReturnType<typeof setInterval> | undefined;
         if (isTimerRunning) {
             interval = setInterval(() => {
                 setTimer(t => +(t + 0.1).toFixed(1));

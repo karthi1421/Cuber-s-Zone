@@ -16,12 +16,6 @@ interface AlgFilterBarProps {
     groupLabel?: string;
 }
 
-export function getMoveCount(alg: string): number {
-    if (!alg) return 0;
-    // Remove brackets, rotations x, y, z if desired, or count all token turns
-    return alg.trim().split(/\s+/).filter(Boolean).length;
-}
-
 export const AlgFilterBar: React.FC<AlgFilterBarProps> = ({
     cases,
     selectedGroup,
@@ -109,15 +103,15 @@ export const AlgFilterBar: React.FC<AlgFilterBarProps> = ({
             </div>
 
             {/* Bottom Row: Shape / Category Pills Filter */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 scrollbar-thin">
-                <span className="text-[11px] font-mono font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap mr-1">
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 pt-0.5">
+                <span className="col-span-3 sm:col-span-4 lg:col-span-6 text-[11px] font-mono font-bold text-slate-500 uppercase tracking-wider">
                     {groupLabel}:
                 </span>
 
                 {/* "ALL" pill */}
                 <button
                     onClick={() => onSelectGroup('ALL')}
-                    className={`px-3 py-1 rounded-lg text-xs font-mono font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                    className={`min-w-0 px-3 py-2 rounded-lg text-xs font-mono font-semibold transition-all flex items-center justify-center gap-1.5 ${
                         selectedGroup === 'ALL'
                             ? 'bg-cyan-500 text-slate-950 shadow-sm shadow-cyan-500/30 font-bold'
                             : 'bg-[#181b20] text-slate-400 border border-slate-800 hover:text-white hover:bg-slate-800'
@@ -142,7 +136,7 @@ export const AlgFilterBar: React.FC<AlgFilterBarProps> = ({
                                 : 'bg-[#181b20] text-slate-400 border border-slate-800 hover:text-white hover:bg-slate-800'
                         }`}
                     >
-                        <span>{group}</span>
+                        <span className="truncate">{group}</span>
                         <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
                             selectedGroup === group ? 'bg-cyan-900/30 text-slate-950' : 'bg-slate-900 text-slate-500'
                         }`}>

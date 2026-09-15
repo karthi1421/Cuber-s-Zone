@@ -9,6 +9,24 @@ interface AlgModalProps {
     onPrev?: () => void;
 }
 
+interface TwistyTimeline {
+    jumpToBeginning?: () => void;
+    play?: () => void;
+    pause?: () => void;
+}
+
+interface TwistyPlayerLike {
+    timeline?: TwistyTimeline;
+    controller?: {
+        jumpToStart: (options: { flash: boolean }) => void;
+        togglePlay: (play?: boolean) => void;
+    };
+    experimentalCurrentCanvases?: () => Promise<HTMLCanvasElement[]>;
+    jumpToStart?: () => void;
+    play?: () => void;
+    pause?: () => void;
+}
+
 export const AlgModal: React.FC<AlgModalProps> = ({
     item,
     onClose,
@@ -17,7 +35,7 @@ export const AlgModal: React.FC<AlgModalProps> = ({
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [copied, setCopied] = useState(false);
-    const playerInstanceRef = useRef<any>(null);
+    const playerInstanceRef = useRef<TwistyPlayerLike | null>(null);
 
     // Calculate inverse setup algorithm so cube starts scrambled
     const setupAlg = React.useMemo(() => {
@@ -36,10 +54,21 @@ export const AlgModal: React.FC<AlgModalProps> = ({
     const replayAnimation = () => {
         if (!playerInstanceRef.current) return;
         try {
-            if (typeof playerInstanceRef.current.jumpToStart === 'function') {
+            const controller = playerInstanceRef.current.controller;
+            if (controller) {
+                controller.jumpToStart({ flash: false });
+                controller.togglePlay(true);
+                return;
+            }
+            const timeline = playerInstanceRef.current.timeline;
+            if (timeline && typeof timeline.jumpToBeginning === 'function') {
+                timeline.jumpToBeginning();
+            } else if (typeof playerInstanceRef.current.jumpToStart === 'function') {
                 playerInstanceRef.current.jumpToStart();
             }
-            if (typeof playerInstanceRef.current.play === 'function') {
+            if (timeline && typeof timeline.play === 'function') {
+                timeline.play();
+            } else if (typeof playerInstanceRef.current.play === 'function') {
                 playerInstanceRef.current.play();
             }
         } catch (e) {
@@ -50,6 +79,8 @@ export const AlgModal: React.FC<AlgModalProps> = ({
     useEffect(() => {
         if (!item || !containerRef.current) return;
         let active = true;
+        let resizeObserver: ResizeObserver | null = null;
+        let resizeTimer: ReturnType<typeof setTimeout> | null = null;
 
         containerRef.current.innerHTML = '';
 
@@ -64,6 +95,7 @@ export const AlgModal: React.FC<AlgModalProps> = ({
                     puzzle: '3x3x3',
                     alg: item.alg,
                     experimentalSetupAlg: setupAlg,
+                    visualization: '3D',
                     background: 'none',
                     controlPanel: 'none', // No timeline scrubber or buttons
                     hintFacelets: 'floating',
@@ -73,16 +105,57 @@ export const AlgModal: React.FC<AlgModalProps> = ({
                 });
 
                 player.style.width = '100%';
-                player.style.height = '100%';
+                player.style.height = `${containerRef.current.clientHeight}px`;
                 player.style.display = 'block';
 
                 containerRef.current.appendChild(player);
                 playerInstanceRef.current = player;
 
+                const resizePlayer = async () => {
+                    if (!containerRef.current || typeof (player as unknown as TwistyPlayerLike).experimentalCurrentCanvases !== 'function') return;
+                    const width = Math.max(1, containerRef.current.clientWidth);
+                    const viewportHeight = Math.max(1, containerRef.current.clientHeight);
+                    const canvases = await (player as unknown as TwistyPlayerLike).experimentalCurrentCanvases?.();
+                    canvases?.forEach((canvas) => {
+                        const wrapper = canvas.parentElement;
+                        if (wrapper) {
+                            wrapper.style.height = `${viewportHeight}px`;
+                            wrapper.style.display = 'block';
+                        }
+                        if (canvas.width !== width || canvas.height !== viewportHeight) {
+                            canvas.width = width;
+                            canvas.height = viewportHeight;
+                            canvas.style.width = `${width}px`;
+                            canvas.style.height = `${viewportHeight}px`;
+                        }
+                    });
+                };
+
+                resizeObserver = new ResizeObserver(() => {
+                    void resizePlayer();
+                });
+                resizeObserver.observe(containerRef.current);
+                void resizePlayer();
+                resizeTimer = setTimeout(() => {
+                    void resizePlayer();
+                }, 500);
+
                 // Auto-play immediately
-                setTimeout(() => {
-                    if (active && player && typeof player.play === 'function') {
-                        player.play();
+                setTimeout(async () => {
+                    if (active) {
+                        await resizePlayer();
+                        const controller = (player as unknown as TwistyPlayerLike).controller;
+                        if (controller) {
+                            controller.jumpToStart({ flash: false });
+                            controller.togglePlay(true);
+                        } else {
+                            const timeline = (player as unknown as TwistyPlayerLike).timeline;
+                            if (timeline && typeof timeline.play === 'function') {
+                                timeline.play();
+                            } else if (typeof (player as unknown as TwistyPlayerLike).play === 'function') {
+                                (player as unknown as TwistyPlayerLike).play?.();
+                            }
+                        }
                     }
                 }, 300);
             } catch (err) {
@@ -94,11 +167,19 @@ export const AlgModal: React.FC<AlgModalProps> = ({
 
         return () => {
             active = false;
-            if (playerInstanceRef.current && typeof playerInstanceRef.current.pause === 'function') {
+            resizeObserver?.disconnect();
+            if (resizeTimer) clearTimeout(resizeTimer);
+            const timeline = playerInstanceRef.current?.timeline;
+            if (timeline && typeof timeline.pause === 'function') {
+                timeline.pause();
+            } else if (playerInstanceRef.current && typeof playerInstanceRef.current.pause === 'function') {
                 try {
                     playerInstanceRef.current.pause();
-                } catch {}
+                } catch (error) {
+                    console.error('Error stopping TwistyPlayer:', error);
+                }
             }
+            playerInstanceRef.current = null;
         };
     }, [item, setupAlg]);
 
@@ -173,11 +254,11 @@ export const AlgModal: React.FC<AlgModalProps> = ({
                 <div
                     onClick={replayAnimation}
                     title="Click anywhere on cube to replay animation"
-                    className="flex-1 w-full min-h-[360px] sm:min-h-[440px] bg-[#07080a] relative flex items-center justify-center overflow-hidden cursor-pointer"
+                    className="w-full h-[min(62vh,560px)] min-h-[360px] sm:min-h-[440px] bg-[#07080a] relative flex items-center justify-center overflow-hidden cursor-pointer"
                 >
                     <div
                         ref={containerRef}
-                        className="w-full h-full flex items-center justify-center pointer-events-auto"
+                        className="w-full h-full min-h-[360px] flex items-center justify-center pointer-events-auto"
                     />
 
                     {/* Subtle Replay hint on bottom left */}
