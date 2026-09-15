@@ -1,5 +1,6 @@
 import React from 'react';
 import { Cube3D, CaseType } from './Cube3D';
+import { PllArrowDiagram } from './PllArrowDiagram';
 import { AlgCase } from '../data/cfopData';
 
 interface AlgCardProps {
@@ -25,9 +26,12 @@ export const AlgCard: React.FC<AlgCardProps> = ({ item, onClick, caseType = 'oth
                 </span>
             </div>
 
-            {/* Static Cube Visual (no animation — animation plays in modal on click) */}
-            <div className="w-full h-48 bg-[#090a0c] rounded-xl overflow-hidden mb-3 border border-slate-900 flex items-center justify-center relative transition-all group-hover:opacity-75">
-                <Cube3D alg={item.alg} setup={item.setup} height="180px" caseType={caseType} />
+            <div className="w-full aspect-square max-h-48 bg-[#090a0c] rounded-xl overflow-hidden mb-3 border border-slate-900 flex items-center justify-center relative transition-all group-hover:opacity-75">
+                {caseType === 'pll' ? (
+                    <PllArrowDiagram caseId={item.id} />
+                ) : (
+                    <Cube3D alg={item.alg} setup={item.setup} height="180px" caseType={caseType} />
+                )}
             </div>
 
             {/* Algorithm Formula */}

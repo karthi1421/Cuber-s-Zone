@@ -14,6 +14,7 @@ export type MethodType = 'CFOP' | 'ROUX';
 export type CfopSubcategory = 'F2L' | 'OLL' | 'PLL';
 export type RouxSubcategory = 'CMLL' | 'LSE' | 'STEPS';
 
+
 export default function App() {
   const [activeNav, setActiveNav] = useState<MainNavOption>('3x3');
   const [selectedMethod, setSelectedMethod] = useState<MethodType | null>(null);
@@ -363,9 +364,11 @@ export default function App() {
                     </button>
                   </div>
 
-                  <span className="text-xs font-mono text-slate-500 hidden lg:block">
-                    💡 Click any algorithm below to expand into full-screen 3D animation
-                  </span>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-xs font-mono text-slate-500 hidden lg:block">
+                      💡 Click any algorithm below to expand into full-screen 3D animation
+                    </span>
+                  </div>
                 </div>
 
                 {/* IF SUBSTAGE NOT CHOSEN YET: Don't show cases yet! */}
