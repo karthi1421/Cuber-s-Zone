@@ -25,7 +25,10 @@ export const Cube3D: React.FC<Cube3DProps> = ({
 
         try {
             // Clean algorithm notation - remove parentheses
-            const cleanAlg = (setup || alg).replace(/[()]/g, '').trim();
+            const cleanAlg = (setup || alg)
+                .replace(/[()]/g, '')
+                .replace(/([URFDLBMESxyzfw])2'/g, '$12')
+                .trim();
             const numericHeight = parseInt(height, 10) || 180;
             const visualSize = Math.max(100, numericHeight - 16);
 

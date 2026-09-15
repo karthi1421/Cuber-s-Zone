@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Trash2 } from 'lucide-react';
 import { calculateAverage, formatTime, generate3x3Scramble, Solve } from './timerUtils';
 
 export const CsTimer: React.FC = () => {
@@ -382,10 +383,11 @@ export const CsTimer: React.FC = () => {
                                             </button>
                                             <button
                                                 onClick={() => deleteSolve(solve.id)}
-                                                className="px-2 py-1 rounded text-[11px] text-slate-500 hover:text-rose-400 hover:bg-slate-800 transition-all"
-                                                title="Delete solve"
+                                                aria-label={`Remove solve ${realIdx}`}
+                                                className="w-7 h-7 rounded text-slate-500 hover:text-rose-400 hover:bg-slate-800 transition-all flex items-center justify-center"
+                                                title="Remove this solve"
                                             >
-                                                ✕
+                                                <Trash2 size={14} aria-hidden="true" />
                                             </button>
                                         </div>
                                     </div>

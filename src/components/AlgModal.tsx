@@ -9,33 +9,21 @@ interface AlgModalProps {
     onPrev?: () => void;
 }
 
-interface TwistyTimeline {
-    jumpToBeginning?: () => void;
-    play?: () => void;
-    pause?: () => void;
-}
-
-interface TwistyPlayerLike {
-    timeline?: TwistyTimeline;
-    controller?: {
-        jumpToStart: (options: { flash: boolean }) => void;
-        togglePlay: (play?: boolean) => void;
-    };
-    experimentalCurrentCanvases?: () => Promise<HTMLCanvasElement[]>;
-    jumpToStart?: () => void;
-    play?: () => void;
-    pause?: () => void;
-}
-
 export const AlgModal: React.FC<AlgModalProps> = ({
     item,
     onClose,
     onNext,
     onPrev
 }) => {
-    const containerRef = useRef<HTMLDivElement>(null);
     const [copied, setCopied] = useState(false);
-    const playerInstanceRef = useRef<TwistyPlayerLike | null>(null);
+    const [playbackSpeed, setPlaybackSpeed] = useState(0.75);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const frameImageRef = useRef<HTMLImageElement>(null);
+    const playerRef = useRef<{
+        controller?: { jumpToStart: (options: { flash: boolean }) => void; togglePlay: (play?: boolean) => void };
+        experimentalCurrentCanvases?: () => Promise<HTMLCanvasElement[]>;
+        pause?: () => void;
+    } | null>(null);
 
     // Calculate inverse setup algorithm so cube starts scrambled
     const setupAlg = React.useMemo(() => {
@@ -50,138 +38,88 @@ export const AlgModal: React.FC<AlgModalProps> = ({
         }
     }, [item]);
 
-    // Replay helper
     const replayAnimation = () => {
-        if (!playerInstanceRef.current) return;
-        try {
-            const controller = playerInstanceRef.current.controller;
-            if (controller) {
-                controller.jumpToStart({ flash: false });
-                controller.togglePlay(true);
-                return;
-            }
-            const timeline = playerInstanceRef.current.timeline;
-            if (timeline && typeof timeline.jumpToBeginning === 'function') {
-                timeline.jumpToBeginning();
-            } else if (typeof playerInstanceRef.current.jumpToStart === 'function') {
-                playerInstanceRef.current.jumpToStart();
-            }
-            if (timeline && typeof timeline.play === 'function') {
-                timeline.play();
-            } else if (typeof playerInstanceRef.current.play === 'function') {
-                playerInstanceRef.current.play();
-            }
-        } catch (e) {
-            console.error(e);
-        }
+        playerRef.current?.controller?.jumpToStart({ flash: false });
+        playerRef.current?.controller?.togglePlay(true);
     };
 
     useEffect(() => {
         if (!item || !containerRef.current) return;
         let active = true;
+        let animationFrame = 0;
         let resizeObserver: ResizeObserver | null = null;
-        let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+        let resizeTimer: number | null = null;
+        containerRef.current.querySelectorAll('twisty-player').forEach((player) => player.remove());
 
-        containerRef.current.innerHTML = '';
+        const captureFrame = async () => {
+            const player = playerRef.current;
+            const image = frameImageRef.current;
+            if (active && player?.experimentalCurrentCanvases && image) {
+                const canvas = (await player.experimentalCurrentCanvases())[0];
+                if (canvas && canvas.width > 0 && canvas.height > 0) image.src = canvas.toDataURL('image/png');
+            }
+            if (active) animationFrame = window.requestAnimationFrame(() => void captureFrame());
+        };
 
-        // Dynamically import TwistyPlayer for minimal full-screen 3D animation
         import('cubing/twisty').then(({ TwistyPlayer }) => {
             if (!active || !containerRef.current) return;
+            const player = new TwistyPlayer({
+                puzzle: '3x3x3',
+                alg: item.alg,
+                experimentalSetupAlg: setupAlg,
+                visualization: '3D',
+                background: 'none',
+                controlPanel: 'none',
+                hintFacelets: 'floating',
+                cameraLatitude: 28,
+                cameraLongitude: -35,
+                tempoScale: playbackSpeed,
+            });
+            const typedPlayer = player as unknown as NonNullable<typeof playerRef.current>;
+            playerRef.current = typedPlayer;
+            player.style.width = '100%';
+            player.style.height = '100%';
+            player.style.position = 'absolute';
+            player.style.opacity = '0';
+            player.style.pointerEvents = 'none';
+            containerRef.current.appendChild(player);
 
-            containerRef.current.innerHTML = '';
-
-            try {
-                const player = new TwistyPlayer({
-                    puzzle: '3x3x3',
-                    alg: item.alg,
-                    experimentalSetupAlg: setupAlg,
-                    visualization: '3D',
-                    background: 'none',
-                    controlPanel: 'none', // No timeline scrubber or buttons
-                    hintFacelets: 'floating',
-                    cameraLatitude: 28,
-                    cameraLongitude: -35,
-                    tempoScale: 1.2,
-                });
-
-                player.style.width = '100%';
-                player.style.height = `${containerRef.current.clientHeight}px`;
-                player.style.display = 'block';
-
-                containerRef.current.appendChild(player);
-                playerInstanceRef.current = player;
-
-                const resizePlayer = async () => {
-                    if (!containerRef.current || typeof (player as unknown as TwistyPlayerLike).experimentalCurrentCanvases !== 'function') return;
-                    const width = Math.max(1, containerRef.current.clientWidth);
-                    const viewportHeight = Math.max(1, containerRef.current.clientHeight);
-                    const canvases = await (player as unknown as TwistyPlayerLike).experimentalCurrentCanvases?.();
-                    canvases?.forEach((canvas) => {
-                        const wrapper = canvas.parentElement;
-                        if (wrapper) {
-                            wrapper.style.height = `${viewportHeight}px`;
-                            wrapper.style.display = 'block';
-                        }
-                        if (canvas.width !== width || canvas.height !== viewportHeight) {
-                            canvas.width = width;
-                            canvas.height = viewportHeight;
-                            canvas.style.width = `${width}px`;
-                            canvas.style.height = `${viewportHeight}px`;
-                        }
-                    });
-                };
-
-                resizeObserver = new ResizeObserver(() => {
-                    void resizePlayer();
-                });
-                resizeObserver.observe(containerRef.current);
-                void resizePlayer();
-                resizeTimer = setTimeout(() => {
-                    void resizePlayer();
-                }, 500);
-
-                // Auto-play immediately
-                setTimeout(async () => {
-                    if (active) {
-                        await resizePlayer();
-                        const controller = (player as unknown as TwistyPlayerLike).controller;
-                        if (controller) {
-                            controller.jumpToStart({ flash: false });
-                            controller.togglePlay(true);
-                        } else {
-                            const timeline = (player as unknown as TwistyPlayerLike).timeline;
-                            if (timeline && typeof timeline.play === 'function') {
-                                timeline.play();
-                            } else if (typeof (player as unknown as TwistyPlayerLike).play === 'function') {
-                                (player as unknown as TwistyPlayerLike).play?.();
-                            }
-                        }
+            const resizePlayer = async () => {
+                if (!containerRef.current || !typedPlayer.experimentalCurrentCanvases) return;
+                const width = Math.max(1, containerRef.current.clientWidth);
+                const height = Math.max(1, containerRef.current.clientHeight);
+                const canvases = await typedPlayer.experimentalCurrentCanvases();
+                canvases.forEach((canvas) => {
+                    if (canvas.parentElement) {
+                        canvas.parentElement.style.height = `${height}px`;
+                        canvas.parentElement.style.display = 'block';
                     }
-                }, 300);
-            } catch (err) {
-                console.error('Error mounting TwistyPlayer:', err);
-            }
-        }).catch(err => {
-            console.error('Error importing cubing/twisty:', err);
-        });
+                    canvas.width = width;
+                    canvas.height = height;
+                    canvas.style.width = `${width}px`;
+                    canvas.style.height = `${height}px`;
+                });
+                typedPlayer.controller?.jumpToStart({ flash: false });
+                typedPlayer.controller?.togglePlay(true);
+            };
+
+            resizeObserver = new ResizeObserver(() => void resizePlayer());
+            resizeObserver.observe(containerRef.current);
+            void resizePlayer().then(() => void captureFrame());
+            resizeTimer = window.setTimeout(() => {
+                void resizePlayer().then(() => void captureFrame());
+            }, 500);
+        }).catch((error) => console.error('Error importing cubing/twisty:', error));
 
         return () => {
             active = false;
+            window.cancelAnimationFrame(animationFrame);
             resizeObserver?.disconnect();
-            if (resizeTimer) clearTimeout(resizeTimer);
-            const timeline = playerInstanceRef.current?.timeline;
-            if (timeline && typeof timeline.pause === 'function') {
-                timeline.pause();
-            } else if (playerInstanceRef.current && typeof playerInstanceRef.current.pause === 'function') {
-                try {
-                    playerInstanceRef.current.pause();
-                } catch (error) {
-                    console.error('Error stopping TwistyPlayer:', error);
-                }
-            }
-            playerInstanceRef.current = null;
+            if (resizeTimer) window.clearTimeout(resizeTimer);
+            playerRef.current?.pause?.();
+            playerRef.current = null;
         };
-    }, [item, setupAlg]);
+    }, [item, playbackSpeed, setupAlg]);
 
     // Keyboard navigation
     useEffect(() => {
@@ -256,10 +194,9 @@ export const AlgModal: React.FC<AlgModalProps> = ({
                     title="Click anywhere on cube to replay animation"
                     className="w-full h-[min(62vh,560px)] min-h-[360px] sm:min-h-[440px] bg-[#07080a] relative flex items-center justify-center overflow-hidden cursor-pointer"
                 >
-                    <div
-                        ref={containerRef}
-                        className="w-full h-full min-h-[360px] flex items-center justify-center pointer-events-auto"
-                    />
+                    <div ref={containerRef} className="absolute inset-0 flex items-center justify-center">
+                        <img ref={frameImageRef} alt="Animated cube algorithm" className="w-full h-full object-contain" />
+                    </div>
 
                     {/* Subtle Replay hint on bottom left */}
                     <div className="absolute bottom-3 left-4 text-[11px] font-mono text-slate-500 pointer-events-none">
@@ -268,16 +205,32 @@ export const AlgModal: React.FC<AlgModalProps> = ({
                 </div>
 
                 {/* Minimal Algorithm Formula Footer */}
-                <div className="px-6 py-4 bg-[#11141a] border-t border-slate-800/80 flex items-center justify-between gap-4">
+                <div className="px-6 py-4 bg-[#11141a] border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-4">
                     <p className="font-mono text-base sm:text-lg text-cyan-300 font-bold select-all tracking-wider truncate">
                         {item.alg}
                     </p>
-                    <button
-                        onClick={copyAlg}
-                        className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700/60 text-slate-300 rounded-xl text-xs font-mono font-semibold transition-all whitespace-nowrap"
-                    >
-                        {copied ? '✓ Copied' : '📋 Copy'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <label className="flex items-center gap-2 text-xs font-mono text-slate-400">
+                            Speed
+                            <select
+                                value={playbackSpeed}
+                                onChange={(event) => setPlaybackSpeed(Number(event.target.value))}
+                                className="bg-slate-900 border border-slate-700 text-cyan-300 rounded-lg px-2 py-1.5 outline-none"
+                                aria-label="Playback speed"
+                            >
+                                <option value="0.5">0.5x</option>
+                                <option value="0.75">0.75x</option>
+                                <option value="1">1x</option>
+                                <option value="1.5">1.5x</option>
+                            </select>
+                        </label>
+                        <button
+                            onClick={copyAlg}
+                            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700/60 text-slate-300 rounded-xl text-xs font-mono font-semibold transition-all whitespace-nowrap"
+                        >
+                            {copied ? '✓ Copied' : '📋 Copy'}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
