@@ -10,13 +10,14 @@ export const CsTimer: React.FC = () => {
     const [solves, setSolves] = useState<Solve[]>(() => {
         try {
             const saved = localStorage.getItem('cs_timer_solves');
-            return saved ? JSON.parse(saved) : [];
+            const parsed = saved ? JSON.parse(saved) : [];
+            return Array.isArray(parsed) ? parsed : [];
         } catch {
             return [];
         }
     });
 
-    const [copiedScramble, setCopiedScramble] = useState(false);
+    const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
     const holdTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const startTimeRef = useRef<number>(0);
@@ -39,10 +40,15 @@ export const CsTimer: React.FC = () => {
         setScramble(generate3x3Scramble());
     }, []);
 
-    const copyScramble = () => {
-        navigator.clipboard.writeText(scramble);
-        setCopiedScramble(true);
-        setTimeout(() => setCopiedScramble(false), 1500);
+    const copyScramble = async () => {
+        try {
+            await navigator.clipboard.writeText(scramble);
+            setCopyStatus('copied');
+            window.setTimeout(() => setCopyStatus('idle'), 1500);
+        } catch (error) {
+            console.error('Failed to copy scramble:', error);
+            setCopyStatus('failed');
+        }
     };
 
     const recordSolve = useCallback((finalMs: number) => {
@@ -220,7 +226,7 @@ export const CsTimer: React.FC = () => {
                         title="Copy Scramble"
                         className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-xl text-xs font-mono font-semibold transition-all"
                     >
-                        {copiedScramble ? '✓ Copied' : '📋 Copy'}
+                        {copyStatus === 'copied' ? '✓ Copied' : copyStatus === 'failed' ? 'Copy unavailable' : '📋 Copy'}
                     </button>
                     <button
                         onClick={newScramble}

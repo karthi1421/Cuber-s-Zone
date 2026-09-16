@@ -8,18 +8,30 @@ export const TrainAlgorithms: React.FC = () => {
     const [showSolution, setShowSolution] = useState(false);
     const [timer, setTimer] = useState(0);
     const [isTimerRunning, setIsTimerRunning] = useState(false);
-    const [streak, setStreak] = useState(() => Number(localStorage.getItem('cuber_train_streak') || 0));
+    const [streak, setStreak] = useState(() => {
+        try {
+            const saved = Number(localStorage.getItem('cuber_train_streak') || 0);
+            return Number.isFinite(saved) && saved >= 0 ? saved : 0;
+        } catch {
+            return 0;
+        }
+    });
     const [history, setHistory] = useState<{ name: string; correct: boolean; time: number }[]>(() => {
         try {
-            return JSON.parse(localStorage.getItem('cuber_train_history') || '[]');
+            const parsed = JSON.parse(localStorage.getItem('cuber_train_history') || '[]');
+            return Array.isArray(parsed) ? parsed : [];
         } catch {
             return [];
         }
     });
 
     useEffect(() => {
-        localStorage.setItem('cuber_train_streak', String(streak));
-        localStorage.setItem('cuber_train_history', JSON.stringify(history));
+        try {
+            localStorage.setItem('cuber_train_streak', String(streak));
+            localStorage.setItem('cuber_train_history', JSON.stringify(history));
+        } catch (error) {
+            console.error('Failed to save training progress:', error);
+        }
     }, [streak, history]);
 
     const pool: AlgCase[] = React.useMemo(() => {

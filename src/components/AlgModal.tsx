@@ -15,7 +15,7 @@ export const AlgModal: React.FC<AlgModalProps> = ({
     onNext,
     onPrev
 }) => {
-    const [copied, setCopied] = useState(false);
+    const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
     const [playbackSpeed, setPlaybackSpeed] = useState(0.75);
     const containerRef = useRef<HTMLDivElement>(null);
     const frameImageRef = useRef<HTMLImageElement>(null);
@@ -138,10 +138,15 @@ export const AlgModal: React.FC<AlgModalProps> = ({
 
     if (!item) return null;
 
-    const copyAlg = () => {
-        navigator.clipboard.writeText(item.alg);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
+    const copyAlg = async () => {
+        try {
+            await navigator.clipboard.writeText(item.alg);
+            setCopyStatus('copied');
+            window.setTimeout(() => setCopyStatus('idle'), 1500);
+        } catch (error) {
+            console.error('Failed to copy algorithm:', error);
+            setCopyStatus('failed');
+        }
     };
 
     return (
@@ -228,7 +233,7 @@ export const AlgModal: React.FC<AlgModalProps> = ({
                             onClick={copyAlg}
                             className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700/60 text-slate-300 rounded-xl text-xs font-mono font-semibold transition-all whitespace-nowrap"
                         >
-                            {copied ? '✓ Copied' : '📋 Copy'}
+                            {copyStatus === 'copied' ? '✓ Copied' : copyStatus === 'failed' ? 'Copy unavailable' : '📋 Copy'}
                         </button>
                     </div>
                 </div>

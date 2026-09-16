@@ -32,7 +32,7 @@ export const ROUX_STEPS: RouxStep[] = [
         title: 'CMLL (Corners)',
         description: 'Orient and permute all four U-layer corners simultaneously in a single algorithm, ignoring the M-slice.',
         movecount: '~9–10 moves',
-        features: ['42 total cases in 7 sets', 'Preserves both 1x2x3 blocks', 'Prepares for LSE']
+        features: ['22 curated cases across 8 sets', 'Preserves both 1x2x3 blocks', 'Prepares for LSE']
     },
     {
         id: 'lse',
@@ -81,7 +81,7 @@ export const CMLL_DATA: AlgCase[] = [
 
     // Pi Cases
     { id: 'cmll-pi-right', name: 'CMLL Pi - Right Bar', alg: "R U' R2 U R2 U R2 U' R", group: 'Pi Cases' },
-    { id: 'cmll-pi-x', name: 'CMLL Pi - X', alg: "r U' r2 U r2 U r2 U' r" }
+    { id: 'cmll-pi-x', name: 'CMLL Pi - X', alg: "r U' r2 U r2 U r2 U' r", group: 'Pi Cases' }
 ];
 
 export const LSE_DATA: AlgCase[] = [

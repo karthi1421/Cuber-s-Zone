@@ -165,14 +165,11 @@ export default function App() {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-6 min-w-0 w-full sm:w-auto">
           {/* Logo + Title */}
           <div className="flex items-center justify-center sm:justify-start gap-3 cursor-pointer" onClick={() => setActiveNav('3x3')}>
-            <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700/50 flex items-center justify-center overflow-hidden p-1 shadow-inner">
+            <div className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-700/50 flex items-center justify-center overflow-hidden p-1 shadow-inner">
               <img
                 src="/logo.png"
-                alt="Logo"
+                alt="Cuber's Zone logo"
                 className="w-full h-full object-contain"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
               />
             </div>
             <h1 className="font-bison text-2xl sm:text-3xl font-extrabold tracking-wider text-cyan-400 truncate">
@@ -211,6 +208,7 @@ export default function App() {
             >
               <span>⚡</span> Train Algorithms
             </button>
+
           </nav>
         </div>
 
@@ -669,6 +667,7 @@ export default function App() {
             <TrainAlgorithms />
           </div>
         )}
+
       </main>
 
       {/* FULL SCREEN 3D ANIMATION MODAL */}
